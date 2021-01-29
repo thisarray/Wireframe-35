@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+
+<html lang="en-US">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>skeetshoot</title>
+  <script src="../../jsgame0.js"></script>
+  <style type="text/css" media="screen">
+body {
+  background-color: white;
+  color: black;
+}
+.hidden {
+  display: none;
+}
+#original {
+  margin-left: 1em;
+}
+  </style>
+</head>
+
+<body>
+<section id="imageLoader" class="hidden">
+  <img class="hidden" src="images/background.png" alt="background">
+  <img class="hidden" src="images/frame.png" alt="frame">
+  <img class="hidden" src="images/overlay.png" alt="overlay">
+  <img class="hidden" src="images/shadow.png" alt="shadow">
+  <img class="hidden" src="images/shooter.png" alt="shooter">
+  <img class="hidden" src="images/shooter_l.png" alt="shooter_l">
+  <img class="hidden" src="images/shooter_r.png" alt="shooter_r">
+  <img class="hidden" src="images/skeet.png" alt="skeet">
+  <img class="hidden" src="images/skeet1.png" alt="skeet1">
+  <img class="hidden" src="images/skeet2.png" alt="skeet2">
+  <img class="hidden" src="images/skeet3.png" alt="skeet3">
+</section>
+<section id="soundLoader" class="hidden">
+  <audio class="hidden" controls preload="auto" src="sounds/shot.wav" id="shot">Your browser does not support the audio element.</audio>
+</section>
+
+<main>
+<h1>skeetshoot</h1>
+
+<canvas id="screen">
+The game screen appears here if your browser supports the Canvas API.
+</canvas>
+<section id="controls">
+  <button type="button" id="reset">Reset</button>
+  <button type="button" id="pause">Pause</button>
+</section>
+
+<h2>Attribution</h2>
+
+<p><a href="https://wireframe.raspberrypi.org/issues/35">Code Hyper Sports' shooting minigame, pages 40-41, by Mark Vanstone</a>.</p>
+
+<p>Licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/3.0/legalcode">Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported</a>.</p>
+
+<h2>Original Python code</h2>
+
+<pre id="original"><code>
+# Skeet Shoot
+from random import randint
+gameState = shootTimer = score = 0
+shooter = Actor(&#x27;shooter&#x27;, center=(400, 450))
+frameLeft = Actor(&#x27;frame&#x27;, center=(320, 350))
+frameRight = Actor(&#x27;frame&#x27;, center=(480, 350))
+skeets = []
+
+def draw():
+    screen.blit(&quot;background&quot;, (0, 0))
+    if gameState == 0:
+        for s in range(len(skeets)):
+            if skeets[s].x &gt; 0 and skeets[s].x &lt; 800 and skeets[s].frame &lt; 4:
+                skeets[s].draw()
+                screen.blit(&quot;shadow&quot;, (skeets[s].x-20, 400-(skeets[s].life/2)))
+        shooter.draw()
+        frameLeft.draw()
+        frameRight.draw()
+    else:
+        screen.draw.text(&quot;ROUND OVER&quot;, center = (400, 300), owidth=0.5, ocolor=(255,255,255), color=(0,255,0) , fontsize=80)
+    screen.blit(&quot;overlay&quot;, (0, 0))
+    screen.draw.text(&quot;SCORE:&quot;+str(score), center = (400, 550), owidth=0.5, ocolor=(255,255,255), color=(0,0,255) , fontsize=80)
+    screen.draw.text(&quot;PYGAME ZERO SKEET SHOOT&quot;, center = (400, 55), owidth=0.5, ocolor=(255,255,255), color=(255,0,0) , fontsize=60)
+
+
+def update():
+    global shootTimer, gameState
+    if gameState == 0:
+        if len(skeets) == 100: gameState = 1
+        if randint(0,100) == 1: makeSkeet(700)
+        if randint(0,100) == 2: makeSkeet(100)
+        if shootTimer == 0:
+            shooter.image = &quot;shooter&quot;
+        else: shootTimer -= 1
+        for s in range(len(skeets)):
+            skeets[s].life += 1
+            if skeets[s].frame &gt; 0 and skeets[s].frame &lt; 4:
+                skeets[s].image = &quot;skeet&quot;+str(skeets[s].frame)
+                skeets[s].frame += 1
+            if skeets[s].x &lt; 320 and skeets[s].dir == &quot;right&quot;:
+                skeets[s].distToLeftTarget = 320 - skeets[s].x
+            else: skeets[s].distToLeftTarget = 999
+            if skeets[s].x &gt; 480 and skeets[s].dir == &quot;left&quot;:
+                skeets[s].distToRightTarget = skeets[s].x - 480
+            else: skeets[s].distToRightTarget = 999
+        targetLeft = getNearestSkeetY(&quot;left&quot;)
+        if targetLeft &gt; 0: frameLeft.y += (targetLeft-frameLeft.y)/2
+        targetRight = getNearestSkeetY(&quot;right&quot;)
+        if targetRight &gt; 0: frameRight.y += (targetRight-frameRight.y)/2
+
+def on_key_down(key):
+    global shootTimer
+    if (shootTimer == 0):
+        if key.name == &quot;LEFT&quot;:
+            shooter.image = &quot;shooter_l&quot;
+            shootTimer = 10
+            checkShot(&quot;left&quot;)
+        if key.name == &quot;RIGHT&quot;:
+            shooter.image = &quot;shooter_r&quot;
+            shootTimer = 10
+            checkShot(&quot;right&quot;)
+
+def makeSkeet(st):
+    skeets.append(Actor(&#x27;skeet&#x27;, center=(st, 370)))
+    s = len(skeets)-1
+    skeets[s].frame = 0
+    skeets[s].life = 0
+    skeets[s].distToLeftTarget = 999
+    skeets[s].distToRightTarget = 999
+    endpoint = 800
+    skeets[s].dir = &quot;right&quot;
+    if st &gt; 400:
+        endpoint = 0
+        skeets[s].dir = &quot;left&quot;
+    animate(skeets[len(skeets)-1], duration=3, pos=(endpoint, randint(-200,250)))
+
+def getNearestSkeetY(leftorright):
+    y = 0
+    dist = 999
+    for s in range(len(skeets)):
+        if leftorright == &quot;right&quot;:
+            if(skeets[s].distToRightTarget &lt; dist):
+                dist = skeets[s].distToRightTarget
+                y = skeets[s].y
+        if leftorright == &quot;left&quot;:
+            if(skeets[s].distToLeftTarget &lt; dist):
+                dist = skeets[s].distToLeftTarget
+                y = skeets[s].y
+    return y
+
+def checkShot(leftorright):
+    global score
+    sounds.shot.play()
+    for s in range(len(skeets)):
+        if leftorright == &quot;right&quot;:
+            if skeets[s].collidepoint((frameRight.x, frameRight.y)) and skeets[s].frame == 0:
+                score += 1000
+                skeets[s].frame = 1
+        if leftorright == &quot;left&quot;:
+            if skeets[s].collidepoint((frameLeft.x, frameLeft.y)) and skeets[s].frame == 0:
+                score += 1000
+                skeets[s].frame = 1
+</code></pre>
+</main>
+
+<script>
+// Skeet Shoot
+var gameState, shootTimer, score, shooter, frameLeft, frameRight, skeets;
+
+function reset() {
+  gameState = 0;
+  shootTimer = 0;
+  score = 0;
+  shooter = new Actor('shooter');
+  shooter.center = [400, 450];
+  frameLeft = new Actor('frame');
+  frameLeft.center = [320, 350];
+  frameRight = new Actor('frame');
+  frameRight.center = [480, 350];
+  skeets = [];
+}
+
+function draw() {
+  screen.blit("background", [0, 0]);
+  if (gameState === 0) {
+    for (let s of skeets) {
+      if ((s.posx > 0) && (s.posx < 800) && (s.frame < 4)) {
+        s.draw();
+        screen.blit("shadow", [s.posx - 20, 400 - (s.life / 2)]);
+      }
+    }
+    shooter.draw();
+    frameLeft.draw();
+    frameRight.draw();
+  }
+  else {
+    screen.draw.text("ROUND OVER", {
+      center: [400, 300],
+      owidth: 0.5,
+      ocolor: [255, 255, 255],
+      color: [0, 255, 0],
+      fontsize: 80
+    });
+  }
+  screen.blit("overlay", [0, 0]);
+  screen.draw.text("SCORE:" + score, {
+    center: [400, 550],
+    owidth: 0.5,
+    ocolor: [255, 255, 255],
+    color: [0, 0, 255],
+    fontsize: 80
+  });
+  screen.draw.text("PYGAME ZERO SKEET SHOOT", {
+    center: [400, 55],
+    owidth: 0.5,
+    ocolor: [255, 255, 255],
+    color: [255, 0, 0],
+    fontsize: 60
+  });
+}
+
+/*
+ * Return a random integer N such that min <= N < max.
+ */
+function getRandomInteger(min, max) {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return Math.floor((Math.random() * (max - min)) + min);
+}
+
+function update() {
+  if (gameState === 0) {
+    if (skeets.length === 100) {
+      gameState = 1;
+    }
+    if (getRandomInteger(0, 101) === 1) {
+      makeSkeet(700);
+    }
+    if (getRandomInteger(0, 101) === 2) {
+      makeSkeet(100);
+    }
+    if (shootTimer === 0) {
+      shooter.name = "shooter";
+    }
+    else {
+      shootTimer -= 1;
+    }
+    for (let s of skeets) {
+      s.life += 1;
+      if ((s.frame > 0) && (s.frame < 4)) {
+        s.name = "skeet" + s.frame;
+        s.frame += 1;
+      }
+      if ((s.posx < 320) && (s.dir === "right")) {
+        s.distToLeftTarget = 320 - s.posx;
+      }
+      else {
+        s.distToLeftTarget = 999;
+      }
+      if ((s.posx > 480) && (s.dir === "left")) {
+        s.distToRightTarget = s.posx - 480;
+      }
+      else {
+        s.distToRightTarget = 999;
+      }
+    }
+    let targetLeft = getNearestSkeetY("left"),
+        targetRight = getNearestSkeetY("right");
+    if (targetLeft > 0) {
+      frameLeft.posy += (targetLeft - frameLeft.posy) / 2;
+    }
+    if (targetRight > 0) {
+      frameRight.posy += (targetRight - frameRight.posy) / 2;
+    }
+  }
+}
+
+function on_key_down(key) {
+  if (shootTimer === 0) {
+    if (key === keys.LEFT) {
+      shooter.name = "shooter_l";
+      shootTimer = 10;
+      checkShot("left");
+    }
+    if (key === keys.RIGHT) {
+      shooter.name = "shooter_r";
+      shootTimer = 10;
+      checkShot("right");
+    }
+  }
+}
+
+function makeSkeet(st) {
+  let s = new Actor('skeet'),
+      endpoint = 800;
+  s.center = [st, 370];
+  s.frame = 0;
+  s.life = 0;
+  s.distToLeftTarget = 999;
+  s.distToRightTarget = 999;
+  s.dir = "right";
+  if (st > 400) {
+    endpoint = 0;
+    s.dir = "left";
+  }
+  skeets.push(s);
+  animate(s, 3, {pos: [endpoint, getRandomInteger(-200, 251)]});
+}
+
+function getNearestSkeetY(leftorright) {
+  let y = 0,
+      dist = 999;
+  for (let s of skeets) {
+    if (leftorright === "right") {
+      if (s.distToRightTarget < dist) {
+        dist = s.distToRightTarget;
+        y = s.posy;
+      }
+    }
+    if (leftorright === "left") {
+      if (s.distToLeftTarget < dist) {
+        dist = s.distToLeftTarget;
+        y = s.posy;
+      }
+    }
+  }
+  return y;
+}
+
+function checkShot(leftorright) {
+  sounds.shot.play();
+  for (let s of skeets) {
+    if (leftorright === "right") {
+      if (s.collidepoint(frameRight.posx, frameRight.posy) && (s.frame === 0)) {
+        score += 1000;
+        s.frame = 1;
+      }
+    }
+    if (leftorright === "left") {
+      if (s.collidepoint(frameLeft.posx, frameLeft.posy) && (s.frame === 0)) {
+        score += 1000;
+        s.frame = 1;
+      }
+    }
+  }
+}
+
+window.addEventListener('load', (event) => {
+  images.LOAD('#imageLoader img');
+  sounds.LOAD('#soundLoader audio');
+  reset();
+  screen.set_mode('#screen', '#reset', '#pause');
+});
+</script>
+</body>
+
+</html>
